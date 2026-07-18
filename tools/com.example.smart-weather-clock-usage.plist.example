@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.example.smart-weather-clock-usage</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>REPLACE_WITH_ABSOLUTE_PATH_TO_UV</string>
+    <string>run</string>
+    <string>--with</string>
+    <string>pyserial</string>
+    <string>REPLACE_WITH_ABSOLUTE_PATH_TO_REPOSITORY/tools/clock_service.py</string>
+    <string>--config</string>
+    <string>REPLACE_WITH_ABSOLUTE_PATH_TO_PRIVATE_usage-collector.toml</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>REPLACE_WITH_ABSOLUTE_PATH_TO_LOG/smart-weather-clock-usage.log</string>
+  <key>StandardErrorPath</key>
+  <string>REPLACE_WITH_ABSOLUTE_PATH_TO_LOG/smart-weather-clock-usage.log</string>
+</dict>
+</plist>

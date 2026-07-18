@@ -17,6 +17,145 @@
 
 > Not affiliated with GeekMagic or Anthropic. This firmware replaces the stock firmware entirely.
 
+## PHUD USB Smart Weather Clock
+
+This checkout also contains a custom `clock_usb` target for the physical
+ESP8266 Smart Weather Clock connected through its CH340 USB bridge. This target
+is intentionally separate from the upstream `smalltv` firmware described below:
+it uses no Wi-Fi, stores no Wi-Fi password, and depends on no cloud service.
+
+The flashed USB firmware provides six selectable screens plus reminder alerts:
+
+- An animated cyan LED Face with automatic and manual moods.
+- A six-account Claude and Codex usage dashboard.
+- A BTC/USD price screen with 24 one-hour candlesticks and 24-hour change.
+- A large local Clock view.
+- A visually verified Noto Sans Thai test showing `สวัสดี`.
+- A seven-slot local digital Gallery and slideshow.
+- Full-screen daily reminder alerts that temporarily interrupt any selectable
+  screen.
+
+The reminder implementation is flashed and visually verified on the physical
+clock: an alert remains steady for about 60 seconds and returns to the previous
+screen without flickering or blanking.
+
+The LED Face V1 is flashed with written-data hash and USB protocol verification,
+and its eyes and animation are visually confirmed on the physical display.
+V2-A is flashed and installed as the active Mac service. One stable process owns
+the USB serial connection, CLI requests are verified through its private socket,
+firmware reports the activity-driven Auto emotion, and the physical transitions
+and animation are visually confirmed.
+
+### Control panel and LED Face
+
+Start the Mac-only browser controller:
+
+```sh
+uv run --with pyserial --with pillow tools/clock_gui.py
+```
+
+Open `http://127.0.0.1:8765`. The **Home** tab switches between Face, Usage,
+BTC/USD, Clock, and the Thai test. **Gallery** controls local photos and the
+slideshow, **Reminders** manages eight daily alerts, and **Settings** contains
+brightness and LCD test controls. The server listens only on `127.0.0.1`; the
+clock itself remains USB-only and does not use Wi-Fi.
+
+The Face controller offers eight expressions:
+
+- **Auto with V2-A**: Focus while the Mac is active, Curious after five idle
+  minutes, Sleepy after 30 idle minutes, and Happy for 30 seconds when activity
+  resumes. If the Mac service is unavailable, firmware falls back to the V1
+  time-based schedule.
+- **Neutral, Happy, Focus, Curious, Sleepy, Alert, and Celebrate**: manual moods
+  that remain selected until changed.
+
+Face uses cyan code-rendered eyes on black. Blinking, glancing, alert pulsing,
+and celebration movement update only the eye region, avoiding full-screen redraw
+flicker. Face selection and its mood persist across normal collector-triggered
+USB resets.
+
+Terminal controls are available too:
+
+```sh
+# Select Face with automatic time-based emotion.
+uv run --with pyserial tools/clockctl.py face auto
+
+# Select a manual expression.
+uv run --with pyserial tools/clockctl.py face curious
+
+# Switch to another screen.
+uv run --with pyserial tools/clockctl.py screen usage
+uv run --with pyserial tools/clockctl.py screen btc
+uv run --with pyserial tools/clockctl.py screen clock
+uv run --with pyserial tools/clockctl.py screen thai
+```
+
+Opening this clock's CH340 serial port resets the ESP8266. The V2-A Mac service
+keeps one session open and exposes a user-only Unix socket; the controller, CLI,
+usage updates, and Gallery uploads all route through it instead of reopening the
+port. When the service is not running, the tools retain their direct USB fallback
+and restore cached state after that unavoidable reset. See
+[`USB_CLOCK.md`](USB_CLOCK.md) for every mood command, service installation,
+persistence details, safe flashing, and stock recovery.
+
+### Using reminders
+
+The clock stores up to eight reminders in EEPROM. They repeat every day until
+deleted and survive USB-triggered resets. At the scheduled time, an alert covers
+the current screen for approximately 60 seconds and then returns automatically.
+
+Use the controller's **Reminders** tab to set or delete any of the eight slots.
+The controller remembers the tab you were using. Gallery replacements are first
+transferred to a temporary LittleFS file and checksum-verified, so a failed
+upload leaves the existing slot intact.
+
+The same controls are available from Terminal:
+
+```sh
+# Set slot 0 to alert every day at 14:00.
+uv run --with pyserial tools/clockctl.py remind set 0 14:00 "TAKE MEDICINE"
+
+# List all eight slots.
+uv run --with pyserial tools/clockctl.py remind list
+
+# Delete slot 0.
+uv run --with pyserial tools/clockctl.py remind del 0
+```
+
+Slots range from `0` to `7`. Labels currently accept 1–20 printable ASCII
+characters. The existing Thai screen is a pre-rendered bitmap, not a general
+Thai text renderer, so arbitrary Thai reminder labels are not supported yet.
+
+The clock's wall time is RAM-only. Opening the serial port resets this board,
+so reminders cannot fire after a reset until the Mac collector restores time.
+Once synchronized, the firmware catches up an unfired reminder scheduled within
+the previous two minutes. Reminders due together are displayed sequentially.
+
+Reminder commands also republish the collector's last complete cached usage
+snapshot after the unavoidable USB-open reset. This prevents the Usage screen
+from changing to `MAC OFFLINE` when a reminder is listed, set, or deleted, and
+does not make a live Claude or Codex request.
+
+Build only the USB firmware target with:
+
+```sh
+uvx --from platformio platformio run -e clock_usb
+```
+
+The generated image is `.pio/build/clock_usb/firmware.bin`. See
+[`USB_CLOCK.md`](USB_CLOCK.md) for configuration, safe flashing, recovery, and
+hardware-specific validation requirements. Do not build or flash the upstream
+`smalltv` target for this clock.
+
+### Privacy for contributors
+
+The USB clock never needs Wi-Fi credentials or cloud tokens. Usage integration
+is optional: copy `tools/usage-collector.toml.example` to the Git-ignored
+`tools/usage-collector.toml`; its defaults are safe 0% demo sources. Add local
+provider commands only to that private copy. Before publishing a fork, read
+[`SECURITY.md`](SECURITY.md), especially the warning not to upload a stock-flash
+backup or collector state.
+
 The GeekMagic SmallTV is a cheap desk gadget: a little cube with a 1.54" colour screen, an ESP inside, and a USB-C port. This firmware throws away the stock apps and turns it into three things you actually watch. It shows a **stock and crypto ticker** with prices, change, and a sparkline. It flips into a **Claude usage meter** with an animated mascot and your 5-hour and 7-day usage bars. And it becomes a **live plane radar** centred on your location, pulled from a free public feed. One image carries all three; you switch between them in a built-in web UI, and you update over WiFi.
 
 This firmware builds for four boards from one codebase. The original SmallTV runs an **ESP8266**; the **SmallTV-ultra** is the same ESP-12F hardware and screen, but its stock "Ultra" firmware and flash partitions block a normal OTA of this image, so it takes a two-step loader install (see [Flashing](#flashing)); a second version sold under the same "smart weather clock" look uses an **ESP32-C2 (ESP8684)** instead. A third build targets the **NMMiner NM-TV-154** (PCB marked "NM-TV-Miner"), a classic-ESP32 BTC lottery miner in the same cube with the same screen, confirmed working by a community tester in [issue #1](https://github.com/giovi321/smalltv-mod/issues/1). Pick yours below.

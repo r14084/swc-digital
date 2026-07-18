@@ -1,0 +1,45 @@
+# Copy this file to usage-collector.toml, then replace the demo commands with
+# local, read-only provider commands. Commands run without a shell and must print
+# exactly one integer percentage (42 or 42%), or JSON such as {"percent": 42}.
+# JSON may add "reset_minutes" (minutes until the quota window resets); the
+# collector forwards it so the clock can show a reset countdown.
+
+[collector]
+port = "auto"
+baud = 115200
+interval_seconds = 300
+# Claude's undocumented usage endpoint is rate limited. The collector refreshes
+# one Claude account per run and retains the other two cached values. For an
+# immediate first screen update, optionally seed C1, C2, C3 with the last
+# percentages you saw; each value is replaced by its next successful refresh.
+# claude_initial_percentages = [14, 14, 14]
+# Optional: command printing c1, c2, c3, x1, x2, x3, or off.
+# active_command = ["/absolute/path/to/current-ai-account"]
+
+[emotion]
+# V2-A maps Mac idle time to a RAM-only Face emotion. The persistent service
+# keeps one USB session open, so these checks do not reset the ESP8266.
+poll_seconds = 5
+curious_after_seconds = 300
+sleepy_after_seconds = 1800
+return_happy_seconds = 30
+
+[sources.claude_1]
+# Demo source: shows 0%. Replace with a local command that prints usage.
+command = ["/usr/bin/printf", "0\\n"]
+
+[sources.claude_2]
+# Example macOS Keychain helper: ["/absolute/path/to/claude_profile_vault", "percent", "c2"]
+command = ["/usr/bin/printf", "0\\n"]
+
+[sources.claude_3]
+command = ["/usr/bin/printf", "0\\n"]
+
+[sources.codex_1]
+# Example: ["/usr/bin/env", "python3", "/absolute/path/to/codex_usage.py", "--profile", "your-profile"]
+command = ["/usr/bin/printf", "0\\n"]
+
+[sources.codex_2]
+command = ["/usr/bin/printf", "0\\n"]
+
+[sources.codex_3]
